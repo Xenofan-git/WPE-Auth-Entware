@@ -39,6 +39,22 @@ jobs:
           p.write_text('#include "config.h"\\n#if 0 /* media disabled for headless auth build */\\n#endif\\n')
           PY
 
+      - name: Patch WPE 2.54.0 DRM format header
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("wpewebkit-2.54.0/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp")
+          s = p.read_text()
+          if "#include <drm_fourcc.h>" not in s:
+              lines = s.splitlines()
+              insert = 0
+              for i, line in enumerate(lines):
+                  if line.startswith("#include "):
+                      insert = i + 1
+              lines.insert(insert, "#include <drm_fourcc.h>")
+              p.write_text("\n".join(lines) + "\n")
+          PY
+
       - name: Configure WPE WebKit
         run: |
           cmake -S wpewebkit-2.54.0 -B build-wpe -G Ninja             -DPORT=WPE             -DCMAKE_BUILD_TYPE=Release             -DENABLE_WPE_LEGACY_API=OFF             -DENABLE_INTROSPECTION=OFF             -DENABLE_DOCUMENTATION=OFF             -DENABLE_WPE_PLATFORM_DRM=OFF             -DENABLE_WPE_PLATFORM_WAYLAND=OFF             -DENABLE_WPE_QT_API=OFF             -DENABLE_JOURNALD_LOG=OFF             -DENABLE_SPEECH_SYNTHESIS=OFF             -DENABLE_SPELLCHECK=OFF             -DENABLE_BUBBLEWRAP_SANDBOX=OFF             -DUSE_ATK=OFF             -DUSE_AVIF=OFF             -DUSE_JPEGXL=OFF             -DUSE_LIBINPUT=OFF             -DUSE_LCMS=OFF             -DUSE_GBM=OFF             -DUSE_LIBDRM=OFF             -DUSE_LIBBACKTRACE=OFF             -DUSE_SYSPROF_CAPTURE=OFF             -DUSE_SYSTEM_SYSPROF_CAPTURE=OFF             -DENABLE_GPU_PROCESS=OFF             -DUSE_VULKAN=OFF             -DENABLE_WEBDRIVER=OFF             -DENABLE_GAMEPAD=OFF             -DENABLE_VIDEO=OFF             -DENABLE_WEB_AUDIO=OFF             -DENABLE_SPELLCHECKING=OFF             -DUSE_GSTREAMER=OFF             -DUSE_GSTREAMER_WEBRTC=OFF             -DUSE_OPENGL=OFF             -DUSE_LIBHYPHEN=OFF             -DENABLE_WEBXR=OFF             -DENABLE_WEB_RTC=OFF             -DENABLE_PDFJS=OFF             -DENABLE_WEB_CODECS=OFF             -DENABLE_MHTML=OFF             -DENABLE_NOTIFICATIONS=OFF             -DENABLE_OFFSCREEN_CANVAS=OFF             -DENABLE_OFFSCREEN_CANVAS_IN_WORKERS=OFF             -DENABLE_PERIODIC_MEMORY_MONITOR=OFF             -DENABLE_SHAREABLE_RESOURCE=OFF             -DENABLE_TOUCH_EVENTS=OFF             -DENABLE_VARIATION_FONTS=OFF             -DENABLE_MOUSE_CURSOR_SCALE=OFF             -DENABLE_POINTER_LOCK=OFF             -DENABLE_RESOURCE_USAGE=OFF             -DENABLE_MEMORY_SAMPLER=OFF             -DENABLE_API_TESTS=OFF             -DENABLE_LAYOUT_TESTS=OFF             -DENABLE_MINIBROWSER=OFF
