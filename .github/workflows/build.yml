@@ -39,20 +39,23 @@ jobs:
           p.write_text('#include "config.h"\\n#if 0 /* media disabled for headless auth build */\\n#endif\\n')
           PY
 
-      - name: Patch WPE 2.54.0 DRM format header
+      - name: Patch WPE 2.54.0 DRM format constant
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path("wpewebkit-2.54.0/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp")
           s = p.read_text()
-          if "#include <drm_fourcc.h>" not in s:
-              lines = s.splitlines()
-              insert = 0
-              for i, line in enumerate(lines):
-                  if line.startswith("#include "):
-                      insert = i + 1
-              lines.insert(insert, "#include <drm_fourcc.h>")
-              p.write_text("\n".join(lines) + "\n")
+          marker = '#include "config.h"\\n'
+          define = '''#include "config.h"
+          #ifndef DRM_FORMAT_XRGB8888
+          #define DRM_FORMAT_XRGB8888 0x34325258U
+          #endif
+          '''
+          if "#define DRM_FORMAT_XRGB8888" not in s:
+              if marker not in s:
+                  raise SystemExit("config.h include not found")
+              s = s.replace(marker, define, 1)
+              p.write_text(s)
           PY
 
       - name: Configure WPE WebKit
