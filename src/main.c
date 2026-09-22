@@ -22,14 +22,13 @@ static void javascript_finished(GObject *object, GAsyncResult *result, gpointer 
 {
     App *app = user_data;
     GError *error = NULL;
-    WebKitJavascriptResult *js_result;
     JSCValue *value;
     gchar *text;
 
-    js_result = webkit_web_view_evaluate_javascript_finish(
+    value = webkit_web_view_evaluate_javascript_finish(
         WEBKIT_WEB_VIEW(object), result, &error);
 
-    if (!js_result) {
+    if (!value) {
         g_printerr("wpe-auth: JavaScript evaluation failed: %s\n",
                    error ? error->message : "unknown error");
         g_clear_error(&error);
@@ -37,7 +36,6 @@ static void javascript_finished(GObject *object, GAsyncResult *result, gpointer 
         return;
     }
 
-    value = webkit_javascript_result_get_js_value(js_result);
     text = jsc_value_to_string(value);
 
     /* Never print a real access token. This probe only verifies fragment access. */
@@ -47,7 +45,7 @@ static void javascript_finished(GObject *object, GAsyncResult *result, gpointer 
         g_print("WPE_AUTH_PROBE=%s\n", text ? text : "");
 
     g_free(text);
-    webkit_javascript_result_unref(js_result);
+    g_object_unref(value);
     g_main_loop_quit(app->loop);
 }
 
