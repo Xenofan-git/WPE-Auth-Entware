@@ -10,82 +10,74 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-wpe:
+  build-native:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y             build-essential cmake ninja-build pkg-config             python3 python3-pip git curl xz-utils gperf unifdef             libglib2.0-dev libicu-dev libgcrypt20-dev libsoup-3.0-dev libtasn1-6-dev             libxkbcommon-dev libfontconfig1-dev libdrm-dev             libxml2-dev libxslt1-dev libsqlite3-dev libjpeg-dev libpng-dev             libharfbuzz-dev libhyphen-dev libseccomp-dev libsystemd-dev libwoff-dev             libepoxy-dev libavif-dev libwebp-dev
-
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config python3 python3-pip git curl xz-utils gperf unifdef             libglib2.0-dev libicu-dev libgcrypt20-dev libsoup-3.0-dev libtasn1-6-dev libxkbcommon-dev libfontconfig1-dev libdrm-dev             libxml2-dev libxslt1-dev libsqlite3-dev libjpeg-dev libpng-dev libharfbuzz-dev libhyphen-dev libseccomp-dev libsystemd-dev libwoff-dev             libepoxy-dev libavif-dev libwebp-dev
       - name: Download WPE WebKit 2.54.0
         run: |
-          curl -fL --retry 5             https://wpewebkit.org/releases/wpewebkit-2.54.0.tar.xz             -o wpewebkit-2.54.0.tar.xz
+          curl -fL --retry 5 https://wpewebkit.org/releases/wpewebkit-2.54.0.tar.xz -o wpewebkit-2.54.0.tar.xz
           echo "efa9bcc3cb891c2d88f50eec710d9ccee71cbdf1040420361eb98c17355eb452  wpewebkit-2.54.0.tar.xz" | sha256sum -c -
           tar -xf wpewebkit-2.54.0.tar.xz
-
-      - name: Patch WPE 2.54.0 disabled media binding
+      - name: Apply WPE 2.54 headless build patches
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("wpewebkit-2.54.0/Source/WebCore/bindings/js/JSHTMLMediaElementCustom.cpp")
-          # WPE 2.54.0 can still compile this custom binding with media disabled.
-          # The generated JSHTMLMediaElement class is absent in this configuration.
-          p.write_text('#include "config.h"\\n#if 0 /* media disabled for headless auth build */\\n#endif\\n')
-          PY
-
-      - name: Patch WPE 2.54.0 DRM format constant
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("wpewebkit-2.54.0/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp")
-          s = p.read_text()
+          Path("wpewebkit-2.54.0/Source/WebCore/bindings/js/JSHTMLMediaElementCustom.cpp").write_text(
+              '#include "config.h"\n#if 0 /* media disabled for headless auth build */\n#endif\n')
+          p=Path("wpewebkit-2.54.0/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp")
+          s=p.read_text()
           if "DRM_FORMAT_XRGB8888 0x34325258U" not in s:
-              lines = s.splitlines()
-              lines.insert(0, "#ifndef DRM_FORMAT_XRGB8888")
-              lines.insert(1, "#define DRM_FORMAT_XRGB8888 0x34325258U")
-              lines.insert(2, "#endif")
-              p.write_text("\n".join(lines) + "\n")
+              p.write_text("#ifndef DRM_FORMAT_XRGB8888\n#define DRM_FORMAT_XRGB8888 0x34325258U\n#endif\n"+s)
           PY
-
-      - name: Configure WPE WebKit
+      - name: Configure WPE
         run: |
-          cmake -S wpewebkit-2.54.0 -B build-wpe -G Ninja             -DPORT=WPE             -DCMAKE_BUILD_TYPE=Release             -DCMAKE_INSTALL_PREFIX="$PWD/wpe-install"             -DENABLE_WPE_LEGACY_API=OFF             -DENABLE_INTROSPECTION=OFF             -DENABLE_DOCUMENTATION=OFF             -DENABLE_WPE_PLATFORM_DRM=OFF             -DENABLE_WPE_PLATFORM_WAYLAND=OFF             -DENABLE_WPE_QT_API=OFF             -DENABLE_JOURNALD_LOG=OFF             -DENABLE_SPEECH_SYNTHESIS=OFF             -DENABLE_SPELLCHECK=OFF             -DENABLE_BUBBLEWRAP_SANDBOX=OFF             -DUSE_ATK=OFF             -DUSE_AVIF=OFF             -DUSE_JPEGXL=OFF             -DUSE_LIBINPUT=OFF             -DUSE_LCMS=OFF             -DUSE_GBM=OFF             -DUSE_LIBDRM=OFF             -DUSE_LIBBACKTRACE=OFF             -DUSE_SYSPROF_CAPTURE=OFF             -DUSE_SYSTEM_SYSPROF_CAPTURE=OFF             -DENABLE_GPU_PROCESS=OFF             -DUSE_VULKAN=OFF             -DENABLE_WEBDRIVER=OFF             -DENABLE_GAMEPAD=OFF             -DENABLE_VIDEO=OFF             -DENABLE_WEB_AUDIO=OFF             -DENABLE_SPELLCHECKING=OFF             -DUSE_GSTREAMER=OFF             -DUSE_GSTREAMER_WEBRTC=OFF             -DUSE_OPENGL=OFF             -DUSE_LIBHYPHEN=OFF             -DENABLE_WEBXR=OFF             -DENABLE_WEB_RTC=OFF             -DENABLE_PDFJS=OFF             -DENABLE_WEB_CODECS=OFF             -DENABLE_MHTML=OFF             -DENABLE_NOTIFICATIONS=OFF             -DENABLE_OFFSCREEN_CANVAS=OFF             -DENABLE_OFFSCREEN_CANVAS_IN_WORKERS=OFF             -DENABLE_PERIODIC_MEMORY_MONITOR=OFF             -DENABLE_SHAREABLE_RESOURCE=OFF             -DENABLE_TOUCH_EVENTS=OFF             -DENABLE_VARIATION_FONTS=OFF             -DENABLE_MOUSE_CURSOR_SCALE=OFF             -DENABLE_POINTER_LOCK=OFF             -DENABLE_RESOURCE_USAGE=OFF             -DENABLE_MEMORY_SAMPLER=OFF             -DENABLE_API_TESTS=OFF             -DENABLE_LAYOUT_TESTS=OFF             -DENABLE_MINIBROWSER=OFF
-
-      - name: Build WPE WebKit
+          cmake -S wpewebkit-2.54.0 -B build-wpe -G Ninja -DPORT=WPE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/wpe-install"             -DENABLE_WPE_LEGACY_API=OFF -DENABLE_INTROSPECTION=OFF -DENABLE_DOCUMENTATION=OFF -DENABLE_WPE_PLATFORM_DRM=OFF             -DENABLE_WPE_PLATFORM_WAYLAND=OFF -DENABLE_WPE_QT_API=OFF -DENABLE_JOURNALD_LOG=OFF -DENABLE_SPEECH_SYNTHESIS=OFF             -DENABLE_SPELLCHECK=OFF -DENABLE_BUBBLEWRAP_SANDBOX=OFF -DUSE_ATK=OFF -DUSE_AVIF=OFF -DUSE_JPEGXL=OFF             -DUSE_LIBINPUT=OFF -DUSE_LCMS=OFF -DUSE_GBM=OFF -DUSE_LIBDRM=OFF -DUSE_LIBBACKTRACE=OFF -DUSE_SYSPROF_CAPTURE=OFF             -DUSE_SYSTEM_SYSPROF_CAPTURE=OFF -DENABLE_GPU_PROCESS=OFF -DUSE_VULKAN=OFF -DENABLE_WEBDRIVER=OFF -DENABLE_GAMEPAD=OFF             -DENABLE_VIDEO=OFF -DENABLE_WEB_AUDIO=OFF -DENABLE_SPELLCHECKING=OFF -DUSE_GSTREAMER=OFF -DUSE_GSTREAMER_WEBRTC=OFF             -DUSE_OPENGL=OFF -DUSE_LIBHYPHEN=OFF -DENABLE_WEBXR=OFF -DENABLE_WEB_RTC=OFF -DENABLE_PDFJS=OFF -DENABLE_WEB_CODECS=OFF             -DENABLE_MHTML=OFF -DENABLE_NOTIFICATIONS=OFF -DENABLE_OFFSCREEN_CANVAS=OFF -DENABLE_OFFSCREEN_CANVAS_IN_WORKERS=OFF             -DENABLE_PERIODIC_MEMORY_MONITOR=OFF -DENABLE_SHAREABLE_RESOURCE=OFF -DENABLE_TOUCH_EVENTS=OFF -DENABLE_VARIATION_FONTS=OFF             -DENABLE_MOUSE_CURSOR_SCALE=OFF -DENABLE_POINTER_LOCK=OFF -DENABLE_RESOURCE_USAGE=OFF -DENABLE_MEMORY_SAMPLER=OFF             -DENABLE_API_TESTS=OFF -DENABLE_LAYOUT_TESTS=OFF -DENABLE_MINIBROWSER=OFF
+      - name: Build and stage WPE
         run: |
           cmake --build build-wpe --parallel 2
-
-      - name: Show WPE build result
-        run: |
-          find build-wpe -maxdepth 5 -type f             \( -name 'libWPEWebKit*.so*' -o -name 'WebKitWebProcess' -o -name 'WPEWebProcess' \)             -print | head -50
-
-      - name: Install WPE WebKit staging tree
-        run: |
-          rm -rf wpe-install
           cmake --install build-wpe
-
-      - name: Build authentication probe
+      - name: Build probe
         run: |
-          cmake -S . -B build-probe -G Ninja             -DCMAKE_BUILD_TYPE=Release             -DCMAKE_PREFIX_PATH="$PWD/wpe-install"             -DPKG_CONFIG_PATH="$PWD/wpe-install/lib/pkgconfig:$PKG_CONFIG_PATH"
+          cmake -S . -B build-probe -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$PWD/wpe-install" -DPKG_CONFIG_PATH="$PWD/wpe-install/lib/pkgconfig:$PKG_CONFIG_PATH"
           cmake --build build-probe --parallel 2
-
-      - name: Package artifact
+      - name: Package native artifact
         run: |
           mkdir -p dist/wpe-auth
           cp build-probe/wpe-auth dist/wpe-auth/
           cp README.md dist/wpe-auth/
           tar -C dist -czf wpe-auth-native.tar.gz wpe-auth
-          sha256sum wpe-auth-native.tar.gz
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: wpe-auth-native
           path: wpe-auth-native.tar.gz
-          if-no-files-found: error
+
+  verify-entware-toolchain:
+    runs-on: ubuntu-latest
+    container:
+      image: waujito/entware_builder:aarch64-3.10
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact Entware target toolchain
+        working-directory: /home/me/Entware
+        run: |
+          set -eux
+          test -x /home/me/Entware/staging_dir/toolchain-aarch64_cortex-a53_gcc-8.4.0_glibc-2.27/bin/aarch64-openwrt-linux-gnu-gcc
+          CC=/home/me/Entware/staging_dir/toolchain-aarch64_cortex-a53_gcc-8.4.0_glibc-2.27/bin/aarch64-openwrt-linux-gnu-gcc
+          $CC --version
+          printf 'int main(void){return 0;}\n' >/tmp/probe.c
+          $CC -O2 -mcpu=cortex-a53 -Wl,--dynamic-linker=/opt/lib/ld-linux-aarch64.so.1 /tmp/probe.c -o /tmp/probe
+          file /tmp/probe
+          readelf -l /tmp/probe | grep 'Requesting program interpreter'
+          readelf -V /tmp/probe | grep 'GLIBC_2.27' || true
+      - name: Upload ARM64 toolchain probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: entware-aarch64-toolchain-probe
+          path: /tmp/probe
