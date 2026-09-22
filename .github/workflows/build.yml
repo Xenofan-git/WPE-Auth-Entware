@@ -65,9 +65,14 @@ jobs:
         run: |
           find build-wpe -maxdepth 5 -type f             \( -name 'libWPEWebKit*.so*' -o -name 'WebKitWebProcess' -o -name 'WPEWebProcess' \)             -print | head -50
 
+      - name: Install WPE WebKit staging tree
+        run: |
+          rm -rf wpe-install
+          cmake --install build-wpe --prefix "$PWD/wpe-install"
+
       - name: Build authentication probe
         run: |
-          cmake -S . -B build-probe -G Ninja             -DCMAKE_BUILD_TYPE=Release             -DCMAKE_PREFIX_PATH="$PWD/build-wpe"             -DPKG_CONFIG_PATH="$PWD/build-wpe/lib/pkgconfig:$PKG_CONFIG_PATH"
+          cmake -S . -B build-probe -G Ninja             -DCMAKE_BUILD_TYPE=Release             -DCMAKE_PREFIX_PATH="$PWD/wpe-install"             -DPKG_CONFIG_PATH="$PWD/wpe-install/lib/pkgconfig:$PKG_CONFIG_PATH"
           cmake --build build-probe --parallel 2
 
       - name: Package artifact
