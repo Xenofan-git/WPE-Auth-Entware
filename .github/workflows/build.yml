@@ -45,17 +45,12 @@ jobs:
           from pathlib import Path
           p = Path("wpewebkit-2.54.0/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp")
           s = p.read_text()
-          marker = '#include "config.h"\\n'
-          define = '''#include "config.h"
-          #ifndef DRM_FORMAT_XRGB8888
-          #define DRM_FORMAT_XRGB8888 0x34325258U
-          #endif
-          '''
-          if "#define DRM_FORMAT_XRGB8888" not in s:
-              if marker not in s:
-                  raise SystemExit("config.h include not found")
-              s = s.replace(marker, define, 1)
-              p.write_text(s)
+          if "DRM_FORMAT_XRGB8888 0x34325258U" not in s:
+              lines = s.splitlines()
+              lines.insert(0, "#ifndef DRM_FORMAT_XRGB8888")
+              lines.insert(1, "#define DRM_FORMAT_XRGB8888 0x34325258U")
+              lines.insert(2, "#endif")
+              p.write_text("\n".join(lines) + "\n")
           PY
 
       - name: Configure WPE WebKit
