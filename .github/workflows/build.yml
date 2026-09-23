@@ -177,6 +177,28 @@ jobs:
           pkg-config --version
           python3 --version
 
+      - name: Inspect Entware target GLib development files
+        working-directory: /home/me/Entware
+        run: |
+          set -eux
+          TARGET=/home/me/Entware/staging_dir/target-aarch64_cortex-a53_glibc-2.27
+          TC=/home/me/Entware/staging_dir/toolchain-aarch64_cortex-a53_gcc-8.4.0_glibc-2.27
+          echo "=== target top ==="
+          find "$TARGET" -maxdepth 5 \( -name 'glib-2.0.pc' -o -name 'glib.h' -o -name 'libglib-2.0.so*' \) -print | head -100
+          echo "=== pkgconfig dirs ==="
+          find "$TARGET" -type d -name pkgconfig -print | head -100
+          echo "=== compiler sysroot headers ==="
+          find "$TC/aarch64-openwrt-linux-gnu/sysroot" -maxdepth 4 \( -name 'features.h' -o -name 'stdlib.h' \) -print | head -50
+          echo "=== target includes ==="
+          ls -la "$TARGET/usr/include" 2>/dev/null | head -50 || true
+          ls -la "$TARGET/opt/include" 2>/dev/null | head -50 || true
+          echo "=== target glib ==="
+          find "$TARGET/usr" "$TARGET/opt" -maxdepth 6 -type f \( -name 'glib.h' -o -name 'libglib-2.0.so*' -o -name 'glib-2.0.pc' \) -print 2>/dev/null | head -100
+          echo "=== target pkgconfig files ==="
+          find "$TARGET" -type f -name '*.pc' -print | head -100
+          echo "=== native pkg-config search ==="
+          pkg-config --print-search-paths || true
+
       - name: Download WPE WebKit 2.54.0
         run: |
           curl -fL --retry 5 https://wpewebkit.org/releases/wpewebkit-2.54.0.tar.xz -o wpewebkit-2.54.0.tar.xz
