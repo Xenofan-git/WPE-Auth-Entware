@@ -123,6 +123,16 @@ jobs:
           command -v curl
           command -v xz
 
+      - name: Install portable CMake 3.30 for ARM64 build
+        run: |
+          set -eux
+          mkdir -p "$HOME/cmake"
+          curl -fL --retry 5 https://github.com/Kitware/CMake/releases/download/v3.30.5/cmake-3.30.5-linux-x86_64.tar.gz -o /tmp/cmake.tar.gz
+          tar -xzf /tmp/cmake.tar.gz -C "$HOME/cmake" --strip-components=1
+          echo "$HOME/cmake/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/cmake/bin:$PATH"
+          cmake --version
+
       - name: Inspect Entware target sysroot
         working-directory: /home/me/Entware
         run: |
