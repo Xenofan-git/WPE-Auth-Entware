@@ -19,6 +19,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake ninja-build pkg-config python3 python3-pip git curl xz-utils gperf unifdef             libglib2.0-dev libicu-dev libgcrypt20-dev libsoup-3.0-dev libtasn1-6-dev libxkbcommon-dev libfontconfig1-dev libdrm-dev             libxml2-dev libxslt1-dev libsqlite3-dev libjpeg-dev libpng-dev libharfbuzz-dev libhyphen-dev libseccomp-dev libsystemd-dev libwoff-dev             libepoxy-dev libavif-dev libwebp-dev
+      - name: Install portable CMake 3.30
+        run: |
+          set -eux
+          mkdir -p "$HOME/cmake"
+          curl -fL --retry 5 https://github.com/Kitware/CMake/releases/download/v3.30.5/cmake-3.30.5-linux-x86_64.tar.gz -o /tmp/cmake.tar.gz
+          tar -xzf /tmp/cmake.tar.gz -C "$HOME/cmake" --strip-components=1
+          echo "$HOME/cmake/bin" >> "$GITHUB_PATH"
+          "$HOME/cmake/bin/cmake" --version
+
       - name: Download WPE WebKit 2.54.0
         run: |
           curl -fL --retry 5 https://wpewebkit.org/releases/wpewebkit-2.54.0.tar.xz -o wpewebkit-2.54.0.tar.xz
