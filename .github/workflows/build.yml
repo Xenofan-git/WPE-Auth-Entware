@@ -133,6 +133,17 @@ jobs:
           export PATH="$HOME/cmake/bin:$PATH"
           cmake --version
 
+      - name: Install portable Clang 18 for ARM64 build
+        run: |
+          set -eux
+          mkdir -p "$HOME/llvm"
+          curl -fL --retry 5 https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz -o /tmp/llvm.tar.xz
+          tar -xJf /tmp/llvm.tar.xz -C "$HOME/llvm" --strip-components=1
+          echo "$HOME/llvm/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/llvm/bin:$PATH"
+          clang --version
+          clang++ --version
+
       - name: Inspect Entware target sysroot
         working-directory: /home/me/Entware
         run: |
@@ -176,8 +187,10 @@ jobs:
           cat > entware-aarch64.cmake <<EOF
           set(CMAKE_SYSTEM_NAME Linux)
           set(CMAKE_SYSTEM_PROCESSOR aarch64)
-          set(CMAKE_C_COMPILER $TC/bin/aarch64-openwrt-linux-gnu-gcc)
-          set(CMAKE_CXX_COMPILER $TC/bin/aarch64-openwrt-linux-gnu-g++)
+          set(CMAKE_C_COMPILER $HOME/llvm/bin/clang)
+          set(CMAKE_CXX_COMPILER $HOME/llvm/bin/clang++)
+          set(CMAKE_C_COMPILER_TARGET aarch64-openwrt-linux-gnu)
+          set(CMAKE_CXX_COMPILER_TARGET aarch64-openwrt-linux-gnu)
           set(CMAKE_AR $TC/bin/aarch64-openwrt-linux-gnu-ar)
           set(CMAKE_RANLIB $TC/bin/aarch64-openwrt-linux-gnu-ranlib)
           set(CMAKE_STRIP $TC/bin/aarch64-openwrt-linux-gnu-strip)
@@ -187,8 +200,8 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-          set(CMAKE_C_FLAGS "-mcpu=cortex-a53")
-          set(CMAKE_CXX_FLAGS "-mcpu=cortex-a53")
+          set(CMAKE_C_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TC/aarch64-openwrt-linux-gnu/sysroot --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53")
+          set(CMAKE_CXX_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TC/aarch64-openwrt-linux-gnu/sysroot --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53")
           EOF
           export PKG_CONFIG_SYSROOT_DIR="$TARGET"
           export PKG_CONFIG_LIBDIR="$TARGET/usr/lib/pkgconfig:$TARGET/usr/share/pkgconfig:$TARGET/opt/lib/pkgconfig"
