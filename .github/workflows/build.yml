@@ -133,6 +133,15 @@ jobs:
           export PATH="$HOME/cmake/bin:$PATH"
           cmake --version
 
+      - name: Install Clang runtime compatibility
+        run: |
+          set -eux
+          if command -v apt-get >/dev/null 2>&1; then
+            sed -i '/bullseye-security/d' /etc/apt/sources.list || true
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libtinfo5
+          fi
+
       - name: Install portable Clang 18 for ARM64 build
         run: |
           set -eux
