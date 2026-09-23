@@ -28,6 +28,15 @@ jobs:
           echo "$HOME/cmake/bin" >> "$GITHUB_PATH"
           "$HOME/cmake/bin/cmake" --version
 
+      - name: Inspect target GLib development files
+        working-directory: /home/me/Entware
+        run: |
+          set -eux
+          TARGET=/home/me/Entware/staging_dir/target-aarch64_cortex-a53_glibc-2.27
+          find "$TARGET" -maxdepth 5 \\( -name 'glib-2.0.pc' -o -name 'glib.h' -o -name 'libglib-2.0.so*' \\) -print | head -100
+          find "$TARGET" -maxdepth 4 -type d -name pkgconfig -print
+          pkg-config --print-search-paths || true
+
       - name: Download WPE WebKit 2.54.0
         run: |
           curl -fL --retry 5 https://wpewebkit.org/releases/wpewebkit-2.54.0.tar.xz -o wpewebkit-2.54.0.tar.xz
