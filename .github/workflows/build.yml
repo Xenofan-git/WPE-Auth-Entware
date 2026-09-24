@@ -28,15 +28,6 @@ jobs:
           echo "$HOME/cmake/bin" >> "$GITHUB_PATH"
           "$HOME/cmake/bin/cmake" --version
 
-      - name: Inspect target GLib development files
-        working-directory: /home/me/Entware
-        run: |
-          set -eux
-          TARGET=/home/me/Entware/staging_dir/target-aarch64_cortex-a53_glibc-2.27
-          find "$TARGET" -maxdepth 5 \\( -name 'glib-2.0.pc' -o -name 'glib.h' -o -name 'libglib-2.0.so*' \\) -print | head -100
-          find "$TARGET" -maxdepth 4 -type d -name pkgconfig -print
-          pkg-config --print-search-paths || true
-
       - name: Download WPE WebKit 2.54.0
         run: |
           curl -fL --retry 5 https://wpewebkit.org/releases/wpewebkit-2.54.0.tar.xz -o wpewebkit-2.54.0.tar.xz
@@ -52,6 +43,10 @@ jobs:
           s=p.read_text()
           if "DRM_FORMAT_XRGB8888 0x34325258U" not in s:
               p.write_text("#ifndef DRM_FORMAT_XRGB8888\n#define DRM_FORMAT_XRGB8888 0x34325258U\n#endif\n"+s)
+          p=Path("wpewebkit-2.54.0/Source/cmake/FindGLib.cmake")
+          s=p.read_text()
+          s=s.replace('${GLib_Config_CONTENT"', '${GLib_Config_CONTENT}"')
+          p.write_text(s)
           PY
       - name: Configure WPE
         run: |
@@ -306,14 +301,14 @@ jobs:
           set(CMAKE_AR $TC/bin/aarch64-openwrt-linux-gnu-ar)
           set(CMAKE_RANLIB $TC/bin/aarch64-openwrt-linux-gnu-ranlib)
           set(CMAKE_STRIP $TC/bin/aarch64-openwrt-linux-gnu-strip)
-          set(CMAKE_SYSROOT $TC/aarch64-openwrt-linux-gnu/sysroot)
-          set(CMAKE_FIND_ROOT_PATH $TARGET $TC/aarch64-openwrt-linux-gnu/sysroot)
+          set(CMAKE_SYSROOT $TARGET)
+          set(CMAKE_FIND_ROOT_PATH $TARGET $TC)
           set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
           set(CMAKE_C_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TARGET --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53 -isystem $TC/include -isystem $TARGET/usr/include -isystem $TARGET/opt/include -isystem $TARGET/opt/lib/glib-2.0/include")
-          set(CMAKE_CXX_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TC/aarch64-openwrt-linux-gnu/sysroot --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53")
+          set(CMAKE_CXX_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TARGET --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53 -isystem $TC/include -isystem $TARGET/usr/include -isystem $TARGET/opt/include -isystem $TARGET/opt/lib/glib-2.0/include")
           EOF
           export PKG_CONFIG_SYSROOT_DIR="$TARGET"
           export PKG_CONFIG_LIBDIR="$TARGET/opt/lib/pkgconfig:$TARGET/usr/lib/pkgconfig:$TARGET/usr/share/pkgconfig"
