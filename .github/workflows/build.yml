@@ -220,6 +220,57 @@ jobs:
           echo '=== target libraries ==='
           find "$TARGET" -type f \( -name 'libglib-2.0.so*' -o -name 'libgobject-2.0.so*' \) -print | head -100
 
+      - name: Bootstrap Entware target development sysroot
+        working-directory: /home/me/Entware
+        run: |
+          set -eux
+          TARGET=/home/me/Entware/staging_dir/target-aarch64_cortex-a53_glibc-2.27
+          mkdir -p "$TARGET/opt"
+          curl -fL --retry 5 https://bin.entware.net/aarch64-k3.10/include/include.tar.gz -o /tmp/entware-include.tar.gz
+          tar -xzf /tmp/entware-include.tar.gz -C "$TARGET/opt"
+          python3 - <<'PY'
+          import gzip, re, subprocess, urllib.request
+          from pathlib import Path
+          base='https://bin.entware.net/aarch64-k3.10/'
+          target=Path('/home/me/Entware/staging_dir/target-aarch64_cortex-a53_glibc-2.27')
+          raw=gzip.decompress(urllib.request.urlopen(base+'Packages.gz').read()).decode()
+          pkgs={}
+          for block in raw.split('\\n\\n'):
+              fields={}
+              for line in block.splitlines():
+                  if ': ' in line:
+                      k,v=line.split(': ',1); fields[k]=v
+              if fields.get('Package') and fields.get('Filename'):
+                  pkgs[fields['Package']]=fields
+          wanted={'glib2','icu','libsoup3','libtasn1','libxkbcommon','fontconfig','libxml2','libxml2-dev','libxslt','libsqlite3','libjpeg-turbo','libpng','libwebp'}
+          selected=set()
+          queue=list(wanted)
+          while queue:
+              name=queue.pop()
+              if name in selected or name not in pkgs: continue
+              selected.add(name)
+              deps=pkgs[name].get('Depends','')
+              for d in deps.split(','):
+                  d=d.strip()
+                  if not d: continue
+                  for alt in d.split('|'):
+                      m=re.match(r'([A-Za-z0-9+_.-]+)',alt.strip())
+                      if m and m.group(1) in pkgs:
+                          queue.append(m.group(1)); break
+          print('Selected target packages:', sorted(selected))
+          for name in sorted(selected):
+              f=pkgs[name]['Filename']
+              out=Path('/tmp')/Path(f).name
+              urllib.request.urlretrieve(base+f,out)
+              subprocess.run(['ar','x',str(out)],cwd='/tmp/ipk-'+name,check=False) if False else None
+              d=Path('/tmp/ipk-'+name); d.mkdir(exist_ok=True)
+              subprocess.run(['ar','x',str(out)],cwd=d,check=True)
+              data=next(d.glob('data.tar.*'))
+              subprocess.run(['tar','-xf',str(data),'-C',str(target)],check=True)
+          PY
+          echo '=== bootstrapped GLib/pkgconfig ==='
+          find "$TARGET/opt" -type f \( -name 'glib-2.0.pc' -o -name 'gio-2.0.pc' -o -name 'gobject-2.0.pc' -o -name 'libglib-2.0.so*' \) -print | head -100
+
       - name: Download WPE WebKit 2.54.0
         run: |
           curl -fL --retry 5 https://wpewebkit.org/releases/wpewebkit-2.54.0.tar.xz -o wpewebkit-2.54.0.tar.xz
@@ -261,10 +312,10 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-          set(CMAKE_C_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TC/aarch64-openwrt-linux-gnu/sysroot --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53")
+          set(CMAKE_C_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TARGET --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53 -isystem $TC/include -isystem $TARGET/usr/include -isystem $TARGET/opt/include -isystem $TARGET/opt/lib/glib-2.0/include")
           set(CMAKE_CXX_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TC/aarch64-openwrt-linux-gnu/sysroot --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53")
           EOF
           export PKG_CONFIG_SYSROOT_DIR="$TARGET"
-          export PKG_CONFIG_LIBDIR="$TARGET/usr/lib/pkgconfig:$TARGET/usr/share/pkgconfig:$TARGET/opt/lib/pkgconfig"
+          export PKG_CONFIG_LIBDIR="$TARGET/opt/lib/pkgconfig:$TARGET/usr/lib/pkgconfig:$TARGET/usr/share/pkgconfig"
           export PKG_CONFIG_PATH=""
           cmake -S "$GITHUB_WORKSPACE/wpewebkit-2.54.0" -B "$GITHUB_WORKSPACE/build-wpe-arm64" -G Ninja             -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/entware-aarch64.cmake"             -DPORT=WPE             -DCMAKE_BUILD_TYPE=Release             -DCMAKE_INSTALL_PREFIX=/opt/wpe             -DENABLE_WPE_LEGACY_API=OFF             -DENABLE_INTROSPECTION=OFF             -DENABLE_DOCUMENTATION=OFF             -DENABLE_WPE_PLATFORM_DRM=OFF             -DENABLE_WPE_PLATFORM_WAYLAND=OFF             -DENABLE_WPE_QT_API=OFF             -DENABLE_JOURNALD_LOG=OFF             -DENABLE_SPEECH_SYNTHESIS=OFF             -DENABLE_SPELLCHECK=OFF             -DENABLE_BUBBLEWRAP_SANDBOX=OFF             -DUSE_ATK=OFF -DUSE_AVIF=OFF -DUSE_JPEGXL=OFF -DUSE_LIBINPUT=OFF -DUSE_LCMS=OFF             -DUSE_GBM=OFF -DUSE_LIBDRM=OFF -DUSE_LIBBACKTRACE=OFF             -DUSE_SYSPROF_CAPTURE=OFF -DUSE_SYSTEM_SYSPROF_CAPTURE=OFF             -DENABLE_GPU_PROCESS=OFF -DUSE_VULKAN=OFF -DENABLE_WEBDRIVER=OFF -DENABLE_GAMEPAD=OFF             -DENABLE_VIDEO=OFF -DENABLE_WEB_AUDIO=OFF -DENABLE_SPELLCHECKING=OFF             -DUSE_GSTREAMER=OFF -DUSE_GSTREAMER_WEBRTC=OFF -DUSE_OPENGL=OFF             -DUSE_LIBHYPHEN=OFF -DENABLE_WEBXR=OFF -DENABLE_WEB_RTC=OFF             -DENABLE_PDFJS=OFF -DENABLE_WEB_CODECS=OFF -DENABLE_MHTML=OFF             -DENABLE_NOTIFICATIONS=OFF -DENABLE_OFFSCREEN_CANVAS=OFF             -DENABLE_OFFSCREEN_CANVAS_IN_WORKERS=OFF -DENABLE_PERIODIC_MEMORY_MONITOR=OFF             -DENABLE_SHAREABLE_RESOURCE=OFF -DENABLE_TOUCH_EVENTS=OFF -DENABLE_VARIATION_FONTS=OFF             -DENABLE_MOUSE_CURSOR_SCALE=OFF -DENABLE_POINTER_LOCK=OFF -DENABLE_RESOURCE_USAGE=OFF             -DENABLE_MEMORY_SAMPLER=OFF -DENABLE_API_TESTS=OFF -DENABLE_LAYOUT_TESTS=OFF             -DENABLE_MINIBROWSER=OFF
