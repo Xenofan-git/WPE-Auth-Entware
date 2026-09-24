@@ -232,8 +232,12 @@ jobs:
           base='https://bin.entware.net/aarch64-k3.10/'
           target=Path('/home/me/Entware/staging_dir/target-aarch64_cortex-a53_glibc-2.27')
           raw=gzip.decompress(urllib.request.urlopen(base+'Packages.gz').read()).decode()
+          # Parse by Package headers; the Entware index is not guaranteed to
+          # use blank lines as stanza separators.
           pkgs={}
-          for block in raw.split('\\n\\n'):
+          blocks=re.split(r'(?m)^Package: ', raw)
+          for tail in blocks[1:]:
+              block='Package: '+tail
               fields={}
               for line in block.splitlines():
                   if ': ' in line:
