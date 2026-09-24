@@ -266,8 +266,30 @@ jobs:
               urllib.request.urlretrieve(base+f,out)
               subprocess.run(['ar','x',str(out)],cwd='/tmp/ipk-'+name,check=False) if False else None
               d=Path('/tmp/ipk-'+name); d.mkdir(exist_ok=True)
-              subprocess.run(['ar','x',str(out)],cwd=d,check=True)
-              data=next(d.glob('data.tar.*'))
+              # Entware IPKs are ar archives, but some builder images have
+              # an ar implementation that rejects otherwise valid packages.
+              # Extract the data.tar.* member ourselves to avoid host ar quirks.
+              blob=out.read_bytes()
+              if blob.startswith(b'!<arch>\\n'):
+                  pos=8
+                  data=None
+                  while pos + 60 <= len(blob):
+                      hdr=blob[pos:pos+60]
+                      size=int(hdr[48:58].strip() or b'0')
+                      member=hdr[:16].decode('utf-8','replace').strip().rstrip('/')
+                      start=pos+60
+                      end=start+size
+                      if member.startswith('data.tar'):
+                          data=d/(member.split('/')[-1])
+                          data.write_bytes(blob[start:end])
+                          break
+                      pos=end + (size & 1)
+                  if data is None:
+                      raise RuntimeError(f'No data.tar member in {out}')
+              else:
+                  # Fallback for a directly compressed tar package.
+                  data=d/'data.tar'
+                  data.write_bytes(blob)
               subprocess.run(['tar','-xf',str(data),'-C',str(target)],check=True)
           PY
           echo '=== bootstrapped GLib/pkgconfig ==='
