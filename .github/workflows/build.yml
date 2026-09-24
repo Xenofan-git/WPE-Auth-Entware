@@ -45,7 +45,10 @@ jobs:
               p.write_text("#ifndef DRM_FORMAT_XRGB8888\n#define DRM_FORMAT_XRGB8888 0x34325258U\n#endif\n"+s)
           p=Path("wpewebkit-2.54.0/Source/cmake/FindGLib.cmake")
           s=p.read_text()
-          s=s.replace('${GLib_Config_CONTENT"', '${GLib_Config_CONTENT}"')
+          start=s.index("if (NOT GLib_VERSION AND EXISTS")
+          end=s.index("endif ()", start)+len("endif ()")
+          replacement='if (NOT GLib_VERSION)\n    set(GLib_VERSION "2.82.0")\nendif ()'
+          s=s[:start]+replacement+s[end:]
           p.write_text(s)
           PY
       - name: Configure WPE
