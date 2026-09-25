@@ -276,7 +276,7 @@ jobs:
                   while pos + 60 <= len(blob):
                       hdr=blob[pos:pos+60]
                       size=int(hdr[48:58].strip() or b'0')
-                      member=hdr[:16].decode('utf-8','replace').strip().rstrip('/')
+                      member=hdr[:16].decode('utf-8','replace').strip().rstrip('/').lstrip('./')
                       start=pos+60
                       end=start+size
                       if member.startswith('data.tar'):
