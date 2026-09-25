@@ -269,39 +269,53 @@ jobs:
               # Entware IPKs are ar archives, but some builder images have
               # an ar implementation that rejects otherwise valid packages.
               # Extract the data.tar.* member ourselves to avoid host ar quirks.
-              blob=out.read_bytes()
-              if blob.startswith(b'!<arch>\n'):
-                  pos=8
+              # Entware IPKs encountered in the builder may be either an ar
+              # container or a tar container. In both cases the real payload is
+              # data.tar.*; never feed the outer IPK directly to tar extraction.
+              import tarfile
+              data=None
+              try:
+                  with tarfile.open(out, 'r:*') as outer:
+                      members=outer.getmembers()
+                      names=[m.name.lstrip('./') for m in members]
+                      print(f'{name}: outer tar entries={len(names)} first={names[:8]}')
+                      for m in members:
+                          clean=m.name.lstrip('./')
+                          if clean.startswith('data.tar'):
+                              data=d/(Path(clean).name)
+                              src=outer.extractfile(m)
+                              if src is None:
+                                  raise RuntimeError(f'Cannot read {m.name} from {out}')
+                              data.write_bytes(src.read())
+                              break
+              except tarfile.TarError:
                   data=None
+
+              if data is None:
+                  blob=out.read_bytes()
+                  if not blob.startswith(b'!<arch>\\n'):
+                      raise RuntimeError(f'Unsupported IPK container in {out}: magic={blob[:16].hex()}')
+                  pos=8
                   while pos + 60 <= len(blob):
                       hdr=blob[pos:pos+60]
                       size=int(hdr[48:58].strip() or b'0')
-                      raw_member=hdr[:16].decode('utf-8','replace')
-                      member=raw_member.strip().rstrip('/').lstrip('./')
+                      member=hdr[:16].decode('utf-8','replace').strip().rstrip('/').lstrip('./')
                       start=pos+60
                       end=start+size
                       payload=blob[start:end]
                       print(f'{name}: ar member={member!r} size={size} magic={payload[:8].hex()}')
-                      # IPK packages contain data.tar.* as a compressed tar member.
-                      # Match by both name and compression magic so odd ar member
-                      # naming cannot accidentally make us treat the whole IPK as tar.
-                      if member.startswith('data.tar') or payload.startswith((b'\x1f\x8b', b'\xfd7zXZ\x00', b'BZh')):
-                          data=d/(member or 'data.tar')
+                      if member.startswith('data.tar'):
+                          data=d/(Path(member).name)
                           data.write_bytes(payload)
                           break
                       pos=end + (size & 1)
-                  if data is None:
-                      raise RuntimeError(f'No data.tar member in {out}')
-              else:
-                  # Fallback for a directly compressed tar package.
-                  data=d/'data.tar'
-                  data.write_bytes(blob)
-              import tarfile
+              if data is None:
+                  raise RuntimeError(f'No data.tar member in {out}')
+
               with tarfile.open(data, 'r:*') as tf:
                   names=tf.getnames()
                   print(f'{name}: data archive entries={len(names)} first={names[:8]}')
                   tf.extractall(target)
-          PY
           echo '=== bootstrapped target files ==='
           echo '=== package extraction markers ==='
           find "$TARGET/opt" -maxdepth 5 -type f | head -100
