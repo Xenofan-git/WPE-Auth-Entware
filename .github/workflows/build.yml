@@ -276,12 +276,18 @@ jobs:
                   while pos + 60 <= len(blob):
                       hdr=blob[pos:pos+60]
                       size=int(hdr[48:58].strip() or b'0')
-                      member=hdr[:16].decode('utf-8','replace').strip().rstrip('/').lstrip('./')
+                      raw_member=hdr[:16].decode('utf-8','replace')
+                      member=raw_member.strip().rstrip('/').lstrip('./')
                       start=pos+60
                       end=start+size
-                      if member.startswith('data.tar'):
-                          data=d/(member.split('/')[-1])
-                          data.write_bytes(blob[start:end])
+                      payload=blob[start:end]
+                      print(f'{name}: ar member={member!r} size={size} magic={payload[:8].hex()}')
+                      # IPK packages contain data.tar.* as a compressed tar member.
+                      # Match by both name and compression magic so odd ar member
+                      # naming cannot accidentally make us treat the whole IPK as tar.
+                      if member.startswith('data.tar') or payload.startswith((b'\x1f\x8b', b'\xfd7zXZ\x00', b'BZh')):
+                          data=d/(member or 'data.tar')
+                          data.write_bytes(payload)
                           break
                       pos=end + (size & 1)
                   if data is None:
