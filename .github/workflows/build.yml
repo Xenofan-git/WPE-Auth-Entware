@@ -317,6 +317,54 @@ jobs:
                   print(f'{name}: data archive entries={len(names)} first={names[:8]}')
                   tf.extractall(target)
           PY
+          # Entware ships GLib runtime in glib2 but does not publish a separate
+          # glib2-dev package in this repository. The include archive provides
+          # headers, so provide the small pkg-config metadata CMake needs.
+          mkdir -p "$TARGET/opt/lib/pkgconfig"
+          cat > "$TARGET/opt/lib/pkgconfig/glib-2.0.pc" <<'EOF'
+prefix=/opt
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+Name: GLib
+Description: GLib core library
+Version: 2.82.0
+Requires: libpcre2-8
+Libs: -L\${libdir} -lglib-2.0
+Cflags: -I\${includedir}/glib-2.0 -I\${libdir}/glib-2.0/include
+EOF
+          cat > "$TARGET/opt/lib/pkgconfig/gobject-2.0.pc" <<'EOF'
+prefix=/opt
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+Name: GObject
+Description: GLib GObject library
+Version: 2.82.0
+Requires: glib-2.0
+Libs: -L\${libdir} -lgobject-2.0
+Cflags: -I\${includedir}/glib-2.0 -I\${libdir}/glib-2.0/include
+EOF
+          cat > "$TARGET/opt/lib/pkgconfig/gio-2.0.pc" <<'EOF'
+prefix=/opt
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+Name: GIO
+Description: GLib GIO library
+Version: 2.82.0
+Requires: gobject-2.0
+Libs: -L\${libdir} -lgio-2.0
+Cflags: -I\${includedir}/glib-2.0 -I\${libdir}/glib-2.0/include
+EOF
+          cat > "$TARGET/opt/lib/pkgconfig/gmodule-2.0.pc" <<'EOF'
+prefix=/opt
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+Name: GModule
+Description: GLib module loading library
+Version: 2.82.0
+Requires: glib-2.0
+Libs: -L\${libdir} -lgmodule-2.0
+Cflags: -I\${includedir}/glib-2.0 -I\${libdir}/glib-2.0/include
+EOF
           echo '=== bootstrapped target files ==='
           echo '=== package extraction markers ==='
           find "$TARGET/opt" -maxdepth 5 -type f | head -100
