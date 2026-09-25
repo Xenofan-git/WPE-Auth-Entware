@@ -270,7 +270,7 @@ jobs:
               # an ar implementation that rejects otherwise valid packages.
               # Extract the data.tar.* member ourselves to avoid host ar quirks.
               blob=out.read_bytes()
-              if blob.startswith(b'!<arch>\\n'):
+              if blob.startswith(b'!<arch>\n'):
                   pos=8
                   data=None
                   while pos + 60 <= len(blob):
@@ -290,9 +290,14 @@ jobs:
                   # Fallback for a directly compressed tar package.
                   data=d/'data.tar'
                   data.write_bytes(blob)
-              subprocess.run(['tar','-xf',str(data),'-C',str(target)],check=True)
+              import tarfile
+              with tarfile.open(data, 'r:*') as tf:
+                  names=tf.getnames()
+                  print(f'{name}: data archive entries={len(names)} first={names[:8]}')
+                  tf.extractall(target)
           PY
           echo '=== bootstrapped target files ==='
+          echo '=== package extraction markers ==='
           find "$TARGET/opt" -maxdepth 5 -type f | head -100
           echo '=== bootstrapped GLib/pkgconfig ==='
           find "$TARGET" -type f \( -name 'glib-2.0.pc' -o -name 'gio-2.0.pc' -o -name 'gobject-2.0.pc' -o -name 'libglib-2.0.so*' \) -print | head -100
