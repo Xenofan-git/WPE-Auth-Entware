@@ -316,6 +316,7 @@ jobs:
                   names=tf.getnames()
                   print(f'{name}: data archive entries={len(names)} first={names[:8]}')
                   tf.extractall(target)
+          PY
           echo '=== bootstrapped target files ==='
           echo '=== package extraction markers ==='
           find "$TARGET/opt" -maxdepth 5 -type f | head -100
