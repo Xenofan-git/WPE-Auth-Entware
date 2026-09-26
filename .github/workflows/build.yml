@@ -430,27 +430,41 @@ jobs:
           sed -i 's/#include_next <stdlib.h>/#include <stdlib.h>/' "$CXX_INC/cstdlib"
           test -f "$CXX_INC/cmath"
           test -f "$CXX_INC/cstdlib"
-          # Entware aarch64-k3.10 does not ship libepoxy. Build the WPE-required
-          # libepoxy 1.5.10 for the exact target toolchain instead of using a foreign libc build.
-          curl -fL --retry 5 https://github.com/mesonbuild/meson/releases/download/1.5.2/meson-1.5.2.tar.gz -o /tmp/meson-1.5.2.tar.gz
-          rm -rf /tmp/meson-src
+          # Entware aarch64-k3.10 does not ship libepoxy. Build it for the exact target toolchain.
           python3 - <<'PY'
-          import tarfile
+          import io, os, tarfile, urllib.request
           from pathlib import Path
-          src=Path('/tmp/meson-1.5.2.tar.gz')
-          dst=Path('/tmp/meson-src')
-          dst.mkdir()
-          with tarfile.open(src, 'r:gz') as tf:
-              tf.extractall(dst)
-          assert any(dst.rglob('mesonbuild/mesonmain.py')), 'Meson source archive missing mesonbuild/mesonmain.py'
+          root=Path('/tmp/epoxy-build')
+          if root.exists():
+              import shutil; shutil.rmtree(root)
+          root.mkdir()
+          meson_url='https://github.com/mesonbuild/meson/releases/download/1.5.2/meson-1.5.2.tar.gz'
+          epoxy_url='https://download.gnome.org/sources/libepoxy/1.5/libepoxy-1.5.10.tar.xz'
+          meson_tar=root/'meson.tar.gz'
+          epoxy_tar=root/'epoxy.tar.xz'
+          urllib.request.urlretrieve(meson_url, meson_tar)
+          urllib.request.urlretrieve(epoxy_url, epoxy_tar)
+          meson_src=root/'meson-src'; epoxy_src=root/'epoxy-src'
+          meson_src.mkdir(); epoxy_src.mkdir()
+          with tarfile.open(meson_tar,'r:gz') as tf: tf.extractall(meson_src)
+          with tarfile.open(epoxy_tar,'r:*') as tf: tf.extractall(epoxy_src)
+          meson_main=next(meson_src.rglob('mesonbuild/mesonmain.py'))
+          epoxy_root=next(p for p in epoxy_src.iterdir() if p.is_dir())
+          os.environ['MESON_ROOT']=str(meson_main.parent.parent)
+          os.environ['EPoxy_ROOT']=str(epoxy_root)
+          print('MESON_ROOT=',os.environ['MESON_ROOT'])
+          print('EPOXY_ROOT=',os.environ['EPoxy_ROOT'])
+          assert meson_main.exists()
+          assert (epoxy_root/'meson.build').exists()
           PY
-          curl -fL --retry 5 https://download.gnome.org/sources/libepoxy/1.5/libepoxy-1.5.10.tar.xz -o /tmp/libepoxy-1.5.10.tar.xz
-          rm -rf /tmp/libepoxy-1.5.10 /tmp/build-libepoxy-arm64
-          tar -xf /tmp/libepoxy-1.5.10.tar.xz -C /tmp
+          MESON_ROOT="$MESON_ROOT"
+          test -n "$MESON_ROOT"
+          export PKG_CONFIG_SYSROOT_DIR="$TARGET"
+          export PKG_CONFIG_LIBDIR="$TARGET/opt/lib/pkgconfig:$TARGET/usr/lib/pkgconfig"
           cat > /tmp/meson-cross-arm64.ini <<EOF
           [binaries]
           c = '$GITHUB_HOME/llvm/bin/clang'
-          cpp = '$GITHUB_HOME/llvm/bin/clang++'
+          cpp = '$GITHUB_HOME/llvm/bin/llvm-c++'
           ar = '$TC/bin/aarch64-openwrt-linux-gnu-ar'
           strip = '$TC/bin/aarch64-openwrt-linux-gnu-strip'
           pkgconfig = 'pkg-config'
@@ -465,7 +479,20 @@ jobs:
           c_args = ['--target=aarch64-openwrt-linux-gnu','--sysroot=$TARGET','--gcc-toolchain=$TC','-B$TC/bin','-mcpu=cortex-a53','-isystem','$TC/include','-isystem','$TARGET/usr/include','-isystem','$TARGET/opt/include']
           cpp_args = ['-nostdinc++','--target=aarch64-openwrt-linux-gnu','--sysroot=$TARGET','--gcc-toolchain=$TC','-B$TC/bin','-mcpu=cortex-a53','-isystem','$TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0','-isystem','$TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0/aarch64-openwrt-linux-gnu','-isystem','$TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0/backward','-isystem','$TC/include','-isystem','$TARGET/usr/include','-isystem','$TARGET/opt/include']
           EOF
-          export PKG_CONFIG_SYSROOT_DIR="$TARGET"
+          python3 - <<'PY'
+          import os, subprocess
+          root=os.environ['MESON_ROOT']
+          epoxy=os.environ['EPoxy_ROOT']
+          env=os.environ.copy()
+          env['PYTHONPATH']=root
+          cross='/tmp/meson-cross-arm64.ini'
+          build='/tmp/build-libepoxy-arm64'
+          subprocess.run(['python3','-m','mesonbuild.mesonmain','setup',build,epoxy,'--cross-file',cross,'--prefix','/opt','--libdir','lib','-Dtests=false','-Dx11=false'],env=env,check=True)
+          subprocess.run(['python3','-m','mesonbuild.mesonmain','compile','-C',build,'-j','2'],env=env,check=True)
+          subprocess.run(['python3','-m','mesonbuild.mesonmain','install','-C',build],env={**env,'DESTDIR':os.environ['TARGET']},check=True)
+          PY
+          test -f "$TARGET/opt/lib/libepoxy.so"
+          test -f "$TARGET/opt/lib/pkgconfig/epoxy.pc"
           GLIB_PC="$(find "$TARGET" -type f -name 'glib-2.0.pc' -print -quit)"
           GLIB_PC_DIR="$(dirname "$GLIB_PC")"
           export PKG_CONFIG_LIBDIR="$GLIB_PC_DIR:$TARGET/opt/lib/pkgconfig:$TARGET/usr/lib/pkgconfig:$TARGET/usr/share/pkgconfig"
