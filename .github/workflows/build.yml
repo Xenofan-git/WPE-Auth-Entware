@@ -442,8 +442,8 @@ jobs:
           target=Path(os.environ['TARGET']); tc=Path(os.environ['TC'])
           cross=Path('/tmp/meson-cross-arm64.ini')
           cross.write_text(f"""[binaries]
-          c = '{os.environ['GITHUB_HOME']}/llvm/bin/clang'
-          cpp = '{os.environ['GITHUB_HOME']}/llvm/bin/clang++'
+          c = '{os.environ.get('GITHUB_HOME','/github/home')}/llvm/bin/clang'
+          cpp = '{os.environ.get('GITHUB_HOME','/github/home')}/llvm/bin/clang++'
           ar = '{tc}/bin/aarch64-openwrt-linux-gnu-ar'
           strip = '{tc}/bin/aarch64-openwrt-linux-gnu-strip'
           pkgconfig = 'pkg-config'
