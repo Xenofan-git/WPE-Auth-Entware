@@ -327,9 +327,9 @@ jobs:
           find "$TARGET/opt" -maxdepth 5 -type f | head -100
           echo '=== bootstrapped GLib/pkgconfig ==='
           find "$TARGET" -type f \( -name 'glib-2.0.pc' -o -name 'gio-2.0.pc' -o -name 'gobject-2.0.pc' -o -name 'libglib-2.0.so*' \) -print | head -100
-          python3 -m mesonbuild.mesonmain setup /tmp/build-libepoxy-arm64 /tmp/libepoxy-1.5.10 --cross-file /tmp/meson-cross-arm64.ini --prefix /opt --libdir lib -Dtests=false -Dx11=false
-          python3 -m mesonbuild.mesonmain compile -C /tmp/build-libepoxy-arm64 -j 2
-          DESTDIR="$TARGET" python3 -m mesonbuild.mesonmain install -C /tmp/build-libepoxy-arm64
+          python3 /tmp/meson-1.5.2/meson.py setup /tmp/build-libepoxy-arm64 /tmp/libepoxy-1.5.10 --cross-file /tmp/meson-cross-arm64.ini --prefix /opt --libdir lib -Dtests=false -Dx11=false
+          python3 /tmp/meson-1.5.2/meson.py compile -C /tmp/build-libepoxy-arm64 -j 2
+          DESTDIR="$TARGET" python3 /tmp/meson-1.5.2/meson.py install -C /tmp/build-libepoxy-arm64
           test -f "$TARGET/opt/lib/libepoxy.so"
           test -f "$TARGET/opt/lib/pkgconfig/epoxy.pc"
           GLIB_PC="$(find "$TARGET" -type f -name 'glib-2.0.pc' -print -quit)"
@@ -429,9 +429,9 @@ jobs:
           test -f "$CXX_INC/cstdlib"
           # Entware aarch64-k3.10 does not ship libepoxy. Build the WPE-required
           # libepoxy 1.5.10 for the exact target toolchain instead of using a foreign libc build.
-          curl -fL --retry 5 https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-          python3 /tmp/get-pip.py --disable-pip-version-check
-          python3 -m pip install --disable-pip-version-check 'meson==1.5.2'
+          curl -fL --retry 5 https://github.com/mesonbuild/meson/releases/download/1.5.2/meson-1.5.2.tar.gz -o /tmp/meson-1.5.2.tar.gz
+          rm -rf /tmp/meson-1.5.2
+          tar -xf /tmp/meson-1.5.2.tar.gz -C /tmp
           curl -fL --retry 5 https://download.gnome.org/sources/libepoxy/1.5/libepoxy-1.5.10.tar.xz -o /tmp/libepoxy-1.5.10.tar.xz
           rm -rf /tmp/libepoxy-1.5.10 /tmp/build-libepoxy-arm64
           tar -xf /tmp/libepoxy-1.5.10.tar.xz -C /tmp
