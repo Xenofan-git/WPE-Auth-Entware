@@ -469,6 +469,7 @@ jobs:
           assert (target/'opt/lib/libepoxy.so').exists()
           assert (target/'opt/lib/pkgconfig/epoxy.pc').exists()
           PY
+          export TARGET TC GITHUB_HOME
           python3 /tmp/build_epoxy.py
           GLIB_PC="$(find "$TARGET" -type f -name 'glib-2.0.pc' -print -quit)"
           GLIB_PC_DIR="$(dirname "$GLIB_PC")"
