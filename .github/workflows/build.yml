@@ -327,7 +327,7 @@ jobs:
           find "$TARGET/opt" -maxdepth 5 -type f | head -100
           echo '=== bootstrapped GLib/pkgconfig ==='
           find "$TARGET" -type f \( -name 'glib-2.0.pc' -o -name 'gio-2.0.pc' -o -name 'gobject-2.0.pc' -o -name 'libglib-2.0.so*' \) -print | head -100
-          MESON_ROOT="$(find /tmp/meson-1.5.2 /tmp -type f -path '*/mesonbuild/mesonmain.py' -print -quit | sed 's#/mesonbuild/mesonmain.py##')"
+          MESON_ROOT="$(find /tmp/meson-src -type f -path '*/mesonbuild/mesonmain.py' -print -quit | sed 's#/mesonbuild/mesonmain.py##')"
           test -n "$MESON_ROOT"
           echo "Meson source root: $MESON_ROOT"
           PYTHONPATH="$MESON_ROOT" python3 -m mesonbuild.mesonmain setup /tmp/build-libepoxy-arm64 /tmp/libepoxy-1.5.10 --cross-file /tmp/meson-cross-arm64.ini --prefix /opt --libdir lib -Dtests=false -Dx11=false
@@ -433,8 +433,17 @@ jobs:
           # Entware aarch64-k3.10 does not ship libepoxy. Build the WPE-required
           # libepoxy 1.5.10 for the exact target toolchain instead of using a foreign libc build.
           curl -fL --retry 5 https://github.com/mesonbuild/meson/releases/download/1.5.2/meson-1.5.2.tar.gz -o /tmp/meson-1.5.2.tar.gz
-          rm -rf /tmp/meson-1.5.2
-          tar -xf /tmp/meson-1.5.2.tar.gz -C /tmp
+          rm -rf /tmp/meson-src
+          python3 - <<'PY'
+          import tarfile
+          from pathlib import Path
+          src=Path('/tmp/meson-1.5.2.tar.gz')
+          dst=Path('/tmp/meson-src')
+          dst.mkdir()
+          with tarfile.open(src, 'r:gz') as tf:
+              tf.extractall(dst)
+          assert any(dst.rglob('mesonbuild/mesonmain.py')), 'Meson source archive missing mesonbuild/mesonmain.py'
+          PY
           curl -fL --retry 5 https://download.gnome.org/sources/libepoxy/1.5/libepoxy-1.5.10.tar.xz -o /tmp/libepoxy-1.5.10.tar.xz
           rm -rf /tmp/libepoxy-1.5.10 /tmp/build-libepoxy-arm64
           tar -xf /tmp/libepoxy-1.5.10.tar.xz -C /tmp
