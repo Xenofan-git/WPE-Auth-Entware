@@ -327,14 +327,6 @@ jobs:
           find "$TARGET/opt" -maxdepth 5 -type f | head -100
           echo '=== bootstrapped GLib/pkgconfig ==='
           find "$TARGET" -type f \( -name 'glib-2.0.pc' -o -name 'gio-2.0.pc' -o -name 'gobject-2.0.pc' -o -name 'libglib-2.0.so*' \) -print | head -100
-          MESON_ROOT="$(find /tmp/meson-src -type f -path '*/mesonbuild/mesonmain.py' -print -quit | sed 's#/mesonbuild/mesonmain.py##')"
-          test -n "$MESON_ROOT"
-          echo "Meson source root: $MESON_ROOT"
-          PYTHONPATH="$MESON_ROOT" python3 -m mesonbuild.mesonmain setup /tmp/build-libepoxy-arm64 /tmp/libepoxy-1.5.10 --cross-file /tmp/meson-cross-arm64.ini --prefix /opt --libdir lib -Dtests=false -Dx11=false
-          PYTHONPATH="$MESON_ROOT" python3 -m mesonbuild.mesonmain compile -C /tmp/build-libepoxy-arm64 -j 2
-          DESTDIR="$TARGET" PYTHONPATH="$MESON_ROOT" python3 -m mesonbuild.mesonmain install -C /tmp/build-libepoxy-arm64
-          test -f "$TARGET/opt/lib/libepoxy.so"
-          test -f "$TARGET/opt/lib/pkgconfig/epoxy.pc"
           GLIB_PC="$(find "$TARGET" -type f -name 'glib-2.0.pc' -print -quit)"
           test -n "$GLIB_PC"
           GLIB_PC_DIR="$(dirname "$GLIB_PC")"
