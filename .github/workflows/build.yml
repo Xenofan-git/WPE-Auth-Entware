@@ -383,7 +383,7 @@ jobs:
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
           set(CMAKE_C_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TARGET --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53 -isystem $TC/include -isystem $TARGET/usr/include -isystem $TARGET/opt/include -isystem $TARGET/opt/lib/glib-2.0/include")
-          set(CMAKE_CXX_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TARGET --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53 -isystem $TC/include -isystem $TARGET/usr/include -isystem $TARGET/opt/include -isystem $TARGET/opt/lib/glib-2.0/include")
+          set(CMAKE_CXX_FLAGS "-nostdinc++ --target=aarch64-openwrt-linux-gnu --sysroot=$TARGET --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53 -isystem $TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0 -isystem $TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0/aarch64-openwrt-linux-gnu -isystem $TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0/backward -isystem $TC/lib64/gcc/aarch64-openwrt-linux-gnu/8.4.0/include -isystem $TC/lib64/gcc/aarch64-openwrt-linux-gnu/8.4.0/include-fixed -isystem $TC/include -isystem $TARGET/usr/include -isystem $TARGET/opt/include -isystem $TARGET/opt/lib/glib-2.0/include")
           EOF
           # Entware aarch64-k3.10 currently has no HarfBuzz package in Packages.gz.
           # Build a minimal HarfBuzz for the target instead of relying on a nonexistent
