@@ -244,7 +244,7 @@ jobs:
                       k,v=line.split(': ',1); fields[k]=v
               if fields.get('Package') and fields.get('Filename'):
                   pkgs[fields['Package']]=fields
-          wanted={'glib2','glib2-dev','harfbuzz','harfbuzz-dev','icu','libsoup3','libtasn1','libxkbcommon','fontconfig','libxml2','libxml2-dev','libxslt','libsqlite3','libjpeg-turbo','libpng','libwebp'}
+          wanted={'glib2','glib2-dev','icu','libsoup3','libtasn1','libxkbcommon','fontconfig','libxml2','libxml2-dev','libxslt','libsqlite3','libjpeg-turbo','libpng','libwebp'}
           selected=set()
           queue=list(wanted)
           while queue:
@@ -385,6 +385,30 @@ jobs:
           set(CMAKE_C_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TARGET --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53 -isystem $TC/include -isystem $TARGET/usr/include -isystem $TARGET/opt/include -isystem $TARGET/opt/lib/glib-2.0/include")
           set(CMAKE_CXX_FLAGS "--target=aarch64-openwrt-linux-gnu --sysroot=$TARGET --gcc-toolchain=$TC -B$TC/bin -mcpu=cortex-a53 -isystem $TC/include -isystem $TARGET/usr/include -isystem $TARGET/opt/include -isystem $TARGET/opt/lib/glib-2.0/include")
           EOF
+          # Entware aarch64-k3.10 currently has no HarfBuzz package in Packages.gz.
+          # Build a minimal HarfBuzz for the target instead of relying on a nonexistent
+          # harfbuzz-dev package. WPE only needs the core HarfBuzz library here.
+          curl -fL --retry 5 https://github.com/harfbuzz/harfbuzz/releases/download/10.2.0/harfbuzz-10.2.0.tar.xz -o /tmp/harfbuzz-10.2.0.tar.xz
+          rm -rf /tmp/harfbuzz-10.2.0 /tmp/build-harfbuzz-arm64
+          tar -xf /tmp/harfbuzz-10.2.0.tar.xz -C /tmp
+          cmake -S /tmp/harfbuzz-10.2.0 -B /tmp/build-harfbuzz-arm64 -G Ninja \\
+            -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/entware-aarch64.cmake" \\
+            -DCMAKE_BUILD_TYPE=Release \\
+            -DCMAKE_INSTALL_PREFIX=/opt \\
+            -DBUILD_SHARED_LIBS=ON \\
+            -DHB_HAVE_GLIB=OFF \\
+            -DHB_HAVE_ICU=OFF \\
+            -DHB_HAVE_FREETYPE=OFF \\
+            -DHB_HAVE_GRAPHITE2=OFF \\
+            -DHB_HAVE_GOBJECT=OFF \\
+            -DHB_BUILD_UTILS=OFF \\
+            -DHB_BUILD_SUBSET=OFF \\
+            -DHB_BUILD_RASTER=OFF \\
+            -DHB_BUILD_VECTOR=OFF \\
+            -DHB_BUILD_GPU=OFF
+          cmake --build /tmp/build-harfbuzz-arm64 --parallel 2
+          DESTDIR="$TARGET" cmake --install /tmp/build-harfbuzz-arm64
+          test -f "$TARGET/opt/lib/pkgconfig/harfbuzz.pc"
           export PKG_CONFIG_SYSROOT_DIR="$TARGET"
           GLIB_PC="$(find "$TARGET" -type f -name 'glib-2.0.pc' -print -quit)"
           GLIB_PC_DIR="$(dirname "$GLIB_PC")"
