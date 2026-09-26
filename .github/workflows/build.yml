@@ -470,6 +470,17 @@ jobs:
           assert (target/'opt/lib/pkgconfig/epoxy.pc').exists()
           PY
           export TARGET TC GITHUB_HOME
+          mkdir -p "$TARGET/opt/include/EGL" "$TARGET/opt/include/GL" "$TARGET/opt/include/GLES2" "$TARGET/opt/include/GLES3"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/EGL-Registry/main/api/EGL/egl.h -o "$TARGET/opt/include/EGL/egl.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/EGL-Registry/main/api/EGL/eglext.h -o "$TARGET/opt/include/EGL/eglext.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/EGL-Registry/main/api/EGL/eglplatform.h -o "$TARGET/opt/include/EGL/eglplatform.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/api/GL/gl.h -o "$TARGET/opt/include/GL/gl.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/api/GL/glext.h -o "$TARGET/opt/include/GL/glext.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/api/GL/glcorearb.h -o "$TARGET/opt/include/GL/glcorearb.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/api/GLES2/gl2.h -o "$TARGET/opt/include/GLES2/gl2.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/api/GLES2/gl2ext.h -o "$TARGET/opt/include/GLES2/gl2ext.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/api/GLES3/gl3.h -o "$TARGET/opt/include/GLES3/gl3.h"
+          curl -fL --retry 5 https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/api/GLES3/gl3platform.h -o "$TARGET/opt/include/GLES3/gl3platform.h"
           python3 /tmp/build_epoxy.py
           GLIB_PC="$(find "$TARGET" -type f -name 'glib-2.0.pc' -print -quit)"
           GLIB_PC_DIR="$(dirname "$GLIB_PC")"
