@@ -391,20 +391,20 @@ jobs:
           curl -fL --retry 5 https://github.com/harfbuzz/harfbuzz/releases/download/10.2.0/harfbuzz-10.2.0.tar.xz -o /tmp/harfbuzz-10.2.0.tar.xz
           rm -rf /tmp/harfbuzz-10.2.0 /tmp/build-harfbuzz-arm64
           tar -xf /tmp/harfbuzz-10.2.0.tar.xz -C /tmp
-          cmake -S /tmp/harfbuzz-10.2.0 -B /tmp/build-harfbuzz-arm64 -G Ninja \\
-            -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/entware-aarch64.cmake" \\
-            -DCMAKE_BUILD_TYPE=Release \\
-            -DCMAKE_INSTALL_PREFIX=/opt \\
-            -DBUILD_SHARED_LIBS=ON \\
-            -DHB_HAVE_GLIB=OFF \\
-            -DHB_HAVE_ICU=OFF \\
-            -DHB_HAVE_FREETYPE=OFF \\
-            -DHB_HAVE_GRAPHITE2=OFF \\
-            -DHB_HAVE_GOBJECT=OFF \\
-            -DHB_BUILD_UTILS=OFF \\
-            -DHB_BUILD_SUBSET=OFF \\
-            -DHB_BUILD_RASTER=OFF \\
-            -DHB_BUILD_VECTOR=OFF \\
+          cmake -S /tmp/harfbuzz-10.2.0 -B /tmp/build-harfbuzz-arm64 -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/entware-aarch64.cmake" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/opt \
+            -DBUILD_SHARED_LIBS=ON \
+            -DHB_HAVE_GLIB=OFF \
+            -DHB_HAVE_ICU=OFF \
+            -DHB_HAVE_FREETYPE=OFF \
+            -DHB_HAVE_GRAPHITE2=OFF \
+            -DHB_HAVE_GOBJECT=OFF \
+            -DHB_BUILD_UTILS=OFF \
+            -DHB_BUILD_SUBSET=OFF \
+            -DHB_BUILD_RASTER=OFF \
+            -DHB_BUILD_VECTOR=OFF \
             -DHB_BUILD_GPU=OFF
           cmake --build /tmp/build-harfbuzz-arm64 --parallel 2
           DESTDIR="$TARGET" cmake --install /tmp/build-harfbuzz-arm64
