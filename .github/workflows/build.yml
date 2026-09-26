@@ -244,7 +244,7 @@ jobs:
                       k,v=line.split(': ',1); fields[k]=v
               if fields.get('Package') and fields.get('Filename'):
                   pkgs[fields['Package']]=fields
-          wanted={'glib2','glib2-dev','libepoxy','libepoxy-dev','icu','libsoup3','libtasn1','libxkbcommon','fontconfig','libxml2','libxml2-dev','libxslt','libsqlite3','libjpeg-turbo','libpng','libwebp'}
+          wanted={'glib2','glib2-dev','icu','libsoup3','libtasn1','libxkbcommon','fontconfig','libxml2','libxml2-dev','libxslt','libsqlite3','libjpeg-turbo','libpng','libwebp'}
           selected=set()
           queue=list(wanted)
           while queue:
@@ -327,6 +327,11 @@ jobs:
           find "$TARGET/opt" -maxdepth 5 -type f | head -100
           echo '=== bootstrapped GLib/pkgconfig ==='
           find "$TARGET" -type f \( -name 'glib-2.0.pc' -o -name 'gio-2.0.pc' -o -name 'gobject-2.0.pc' -o -name 'libglib-2.0.so*' \) -print | head -100
+          meson setup /tmp/build-libepoxy-arm64 /tmp/libepoxy-1.5.10 --cross-file /tmp/meson-cross-arm64.ini --prefix /opt --libdir lib -Dtests=false -Dx11=false
+          meson compile -C /tmp/build-libepoxy-arm64 -j 2
+          DESTDIR="$TARGET" meson install -C /tmp/build-libepoxy-arm64
+          test -f "$TARGET/opt/lib/libepoxy.so"
+          test -f "$TARGET/opt/lib/pkgconfig/epoxy.pc"
           GLIB_PC="$(find "$TARGET" -type f -name 'glib-2.0.pc' -print -quit)"
           test -n "$GLIB_PC"
           GLIB_PC_DIR="$(dirname "$GLIB_PC")"
@@ -422,6 +427,31 @@ jobs:
           sed -i 's/#include_next <stdlib.h>/#include <stdlib.h>/' "$CXX_INC/cstdlib"
           test -f "$CXX_INC/cmath"
           test -f "$CXX_INC/cstdlib"
+          # Entware aarch64-k3.10 does not ship libepoxy. Build the WPE-required
+          # libepoxy 1.5.10 for the exact target toolchain instead of using a foreign libc build.
+          apt-get update
+          apt-get install -y --no-install-recommends meson python3
+          curl -fL --retry 5 https://download.gnome.org/sources/libepoxy/1.5/libepoxy-1.5.10.tar.xz -o /tmp/libepoxy-1.5.10.tar.xz
+          rm -rf /tmp/libepoxy-1.5.10 /tmp/build-libepoxy-arm64
+          tar -xf /tmp/libepoxy-1.5.10.tar.xz -C /tmp
+          cat > /tmp/meson-cross-arm64.ini <<EOF
+          [binaries]
+          c = '$GITHUB_HOME/llvm/bin/clang'
+          cpp = '$GITHUB_HOME/llvm/bin/clang++'
+          ar = '$TC/bin/aarch64-openwrt-linux-gnu-ar'
+          strip = '$TC/bin/aarch64-openwrt-linux-gnu-strip'
+          pkgconfig = 'pkg-config'
+          [host_machine]
+          system = 'linux'
+          cpu_family = 'aarch64'
+          cpu = 'cortex-a53'
+          endian = 'little'
+          [properties]
+          sys_root = '$TARGET'
+          [built-in options]
+          c_args = ['--target=aarch64-openwrt-linux-gnu','--sysroot=$TARGET','--gcc-toolchain=$TC','-B$TC/bin','-mcpu=cortex-a53','-isystem','$TC/include','-isystem','$TARGET/usr/include','-isystem','$TARGET/opt/include']
+          cpp_args = ['-nostdinc++','--target=aarch64-openwrt-linux-gnu','--sysroot=$TARGET','--gcc-toolchain=$TC','-B$TC/bin','-mcpu=cortex-a53','-isystem','$TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0','-isystem','$TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0/aarch64-openwrt-linux-gnu','-isystem','$TC/aarch64-openwrt-linux-gnu/include/c++/8.4.0/backward','-isystem','$TC/include','-isystem','$TARGET/usr/include','-isystem','$TARGET/opt/include']
+          EOF
           export PKG_CONFIG_SYSROOT_DIR="$TARGET"
           GLIB_PC="$(find "$TARGET" -type f -name 'glib-2.0.pc' -print -quit)"
           GLIB_PC_DIR="$(dirname "$GLIB_PC")"
