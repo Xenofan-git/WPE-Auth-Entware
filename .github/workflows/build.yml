@@ -397,7 +397,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=/opt \
             -DBUILD_SHARED_LIBS=ON \
             -DHB_HAVE_GLIB=OFF \
-            -DHB_HAVE_ICU=OFF \
+            -DHB_HAVE_ICU=ON \
             -DHB_HAVE_FREETYPE=OFF \
             -DHB_HAVE_GRAPHITE2=OFF \
             -DHB_HAVE_GOBJECT=OFF \
